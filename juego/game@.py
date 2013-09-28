@@ -2,7 +2,7 @@ import pygame, sys
 import math
 from pygame import *
 
-Size = (1200, 600)
+Size = (1152, 355)
 FLAGS = 0
 Resolution = 32
 v=3
@@ -15,33 +15,33 @@ def game():
     up = down = left = right = False
     bg=Surface((1200,600))
     bg.convert()
-    bg.fill(Color("#000000"))
+    bg.fill(Color("white"))
     entities = pygame.sprite.Group()
     arthur = Arthur(20,20)
     platforms = []
 
     x = y = 0
     level = [
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                                     P",
-    "P        pppp                                                P",
-    "P        pppE                 p                              P",
-    "P                          p     p     p                     P",
-    "P                    ppp            p    p                    P",
-    "P                                                      L     P",
-    "PPPPPPPPPPPPPPPPPPPPPPPDDDDDDDDDDDDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              P",
+    "W                                                              W",
+    "W                             p                                W",
+    "W                          p     p                             W",
+    "D                    ppp            p                  X       W",
+    "                                                               W",
+    "GGGGGGGGGGGGGGGGGGGGGLLLLLLLLLLLLLLGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
             ]
 
     #builds the level
@@ -51,16 +51,28 @@ def game():
                 p = Platform(x, y)
                 platforms.append(p)
                 entities.add(p)
+            if col =="D":
+                D = Door(x, y)
+                platforms.append(D)
+                entities.add(D)
+            if col =="G":
+                G = Ground(x, y)
+                platforms.append(G)
+                entities.add(G)
+            if col =="W":
+                W = Wall(x, y)
+                platforms.append(W)
+                entities.add(W)
             if col == "E":
                 e = ExitBlock(x, y)
                 platforms.append(e)
                 entities.add(e)
+            if col == "X":
+                X = LevelBlock(x, y)
+                platforms.append(X)
+                entities.add(X)
             if col == "L":
-                L = LevelBlock(x, y)
-                platforms.append(L)
-                entities.add(L)
-            if col == "D":
-                Death = DangerBlock(x, y)
+                Death = LavaBlock(x, y)
                 platforms.append(Death)
                 entities.add(Death)
             if col == "P":
@@ -73,7 +85,7 @@ def game():
     entities.add(arthur)
 
     while 1:
-        timer.tick(20)
+        timer.tick(40)
         for e in pygame.event.get():
             if e.type == QUIT:
                 pygame.quit()
@@ -123,7 +135,7 @@ class Arthur(Entity):
         self.xvel = 0
         self.yvel = 0
         self.onGround = False
-        self.sheet = pygame.image.load('Arthur/arthur2.png')
+        self.sheet = pygame.image.load('Imagenes/arthur2.png')
         self.sheet.set_clip(pygame.Rect((252,4), (32,41 )))
         self.image = self.sheet.subsurface(self.sheet.get_clip())
         self.rect = self.image.get_rect()
@@ -211,7 +223,9 @@ class Arthur(Entity):
             if sprite.collide_rect(self, p):
                 if isinstance(p, ExitBlock):
                     event.post(event.Event(QUIT))
-                elif isinstance(p, DangerBlock):
+                elif isinstance(p, Door):
+                    event.post(event.Event(QUIT))
+                elif isinstance(p, LavaBlock):
                     display.set_caption("Vidas: "+str(v-1))
                     self.rect.x=50
                     self.rect.y=300
@@ -234,9 +248,8 @@ class Arthur(Entity):
 class Platform(Entity):
     def __init__(self, x, y):
         Entity.__init__(self)
-        self.image = Surface((18,18))
+        self.image = pygame.image.load("Imagenes/sandblock.png")
         self.image.convert()
-        self.image.fill(Color("#DDDDDD"))
         self.rect = Rect(x, y, 18, 18)
 
         def update(self):
@@ -245,26 +258,62 @@ class Platform(Entity):
 class Border(Entity):
     def __init__(self, x, y):
         Entity.__init__(self)
-        self.image = Surface((18,18))
+        self.image = pygame.image.load("Imagenes/wall.png")
         self.image.convert()
-        self.image.fill((0,0,0))
         self.rect = Rect(x, y, 18,18)
 
         def update(self):
             pass
+class Ground(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = pygame.image.load("Imagenes/ground.png")
+        self.image.convert()
+        self.rect = Rect(x, y, 18,18)
 
+        def update(self):
+            pass
+class Door(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = pygame.image.load("Imagenes/door.png")
+        self.image.convert()
+        self.rect = Rect(x, y, 18,18)
+
+        def update(self):
+            pass
+class Wall(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = pygame.image.load("Imagenes/wall.png")
+        self.image.convert()
+        self.rect = Rect(x, y, 18,18)
+
+        def update(self):
+            pass
+class LavaBlock(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = pygame.image.load("Imagenes/lava.png")
+        self.image.convert()
+        self.rect = Rect(x, y, 18,18)
+
+        def update(self):
+            pass
+class LevelBlock(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = pygame.image.load("Imagenes/portal.png")
+        self.image.convert()
+        self.rect = Rect(x, y, 18,18)
+
+        def update(self):
+            pass
 class ExitBlock(Platform):
     def __init__(self, x, y):
         Platform.__init__(self, x, y)
         self.image.fill(Color("#0033FF"))
-class DangerBlock(Platform):
-    def __init__(self, x, y):
-        Platform.__init__(self, x, y)
-        self.image.fill(Color('red'))
-class LevelBlock(Platform):
-    def __init__(self, x, y):
-        Platform.__init__(self, x, y)
-        self.image.fill(Color("green"))
+
 
 
 
