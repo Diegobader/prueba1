@@ -2,18 +2,25 @@ import pygame, sys
 import math
 from pygame import *
 
-Size = (1152, 355)
+WIN_WIDTH = 400
+WIN_HEIGHT = 300
+HALF_WIDTH = int(WIN_WIDTH / 2)
+HALF_HEIGHT = int(WIN_HEIGHT / 2)
+DISPLAY = (WIN_WIDTH, WIN_HEIGHT)
 FLAGS = 0
 Resolution = 32
-v=3
+face_l=0
+face_r=1
 def game():
+    v=3
+    global v
     pygame.init()
-    screen = display.set_mode(Size, FLAGS, Resolution)
-    display.set_caption("Vidas: "+str(v))
+    screen = display.set_mode(DISPLAY, FLAGS, Resolution)
+    display.set_caption("Vidas: 3 ")
     timer = time.Clock()
 
     up = down = left = right = False
-    bg=Surface((1200,600))
+    bg=Surface((DISPLAY))
     bg.convert()
     bg.fill(Color("white"))
     entities = pygame.sprite.Group()
@@ -36,13 +43,19 @@ def game():
     "W                                                              P",
     "W                                                              P",
     "W                                                              P",
-    "W                                                              W",
-    "W                             p                                W",
-    "W                          p     p                             W",
-    "D                    ppp            p                  X       W",
-    "                                                               W",
-    "GGGGGGGGGGGGGGGGGGGGGLLLLLLLLLLLLLLGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
-            ]
+    "W                                                                                                              W",
+    "W                             p                                                                                W",
+    "W                          p     p                                                                             W",
+    "D                  ppppp            p                  X                                                       W",
+    "                                                                                                               W",
+    "GGGGGGGGGGGGGGGGGGGGGLLLLLLLLLLLLLLGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+    ]
 
     #builds the level
     for row in level:
@@ -79,13 +92,20 @@ def game():
                 P = Border(x, y)
                 platforms.append(P)
                 entities.add(P)
+            if col == "T":
+                T = Dirt(x, y)
+                platforms.append(T)
+                entities.add(T)
             x += 18
         y += 18
         x = 0
+    total_level_width  = len(level[0])*32
+    total_level_height = len(level)*32
+    camera = Camera(complex_camera, total_level_width, total_level_height)
     entities.add(arthur)
 
     while 1:
-        timer.tick(40)
+        timer.tick(20)
         for e in pygame.event.get():
             if e.type == QUIT:
                 pygame.quit()
@@ -115,14 +135,15 @@ def game():
                 left = False
 
         #draw bg
-        for y in range(20):
-            for x in range(25):
-                screen.blit(bg, (x * 32, y * 32))
+        for y in range(18):
+            for x in range(18):
+                screen.blit(bg, (x * 18, y * 18))
+        camera.update(arthur)
 
         #update player, draw everything else
-        arthur.update(up, down, left, right, platforms)
-        entities.draw(screen)
-        screen.blit(arthur.image, arthur.rect)
+        arthur.update(up, down, left, right, platforms, face_l, face_r)
+        for e in entities:
+            screen.blit(e.image, camera.apply(e))
         pygame.display.flip()
 
 class Entity(pygame.sprite.Sprite):
@@ -163,8 +184,8 @@ class Arthur(Entity):
                              1: (225, 81, 29, 43),
                              2: (312, 81, 29, 43) }
         self.jump_states = { 0:(282, 48, 29, 37)}
-        self.jump_right_states = { 0: (206, 47, 29, 43)}
-        self.jump_left_states = { 0: (315 ,48, 34, 43)}
+        self.jump_left_states = { 0: (206, 47, 36, 34)}
+        self.jump_right_states = { 0: (318 ,48, 36, 34)}
     def get_frame(self, frame_set):
         self.frame += 1
         if self.frame > (len(frame_set) - 1):
@@ -182,20 +203,25 @@ class Arthur(Entity):
 
         self.rect.center = (self.x, self.y)
 
-    def update(self, up, down, left, right, platforms):
+    def update(self, up, down, left, right, platforms, face_l, face_r):
         if up:
             #only jump if on the ground
             if self.onGround:
-                animation = self.clip(self.jump_states)
                 self.yvel = -16
+            else:
+                pass
         if down:
             animation = self.clip(self.down_states)
             pass
-        if left:
+        if left and self.onGround:
             animation = self.clip(self.left_states)
+            face_l=1
+            face_r=0
             self.xvel = -5
-        if right:
+        if right and self.onGround:
             animation = self.clip(self.right_states)
+            face_l=0
+            face_r=1
             self.xvel = 5
         if not self.onGround:
             #only accelerate wit gravity if in the air
@@ -203,22 +229,38 @@ class Arthur(Entity):
             #max falling sapeed
             if self.yvel > 30:
                 self.yvel = 30
+        if self.yvel!=0 and self.onGround:
+            if right:
+                animation = self.clip(self.jump_right_states)
+                face_l=0
+                face_r=1
+                self.xvel = 5
+            elif left:
+                animation = self.clip(self.jump_left_states)
+                face_l=1
+                face_r=0
+                self.xvel = -5
+            else:
+                animation = self.clip(self.jump_states)
         if not (left or right):
-            animation = self.clip(self.right_states[0])
+            if face_l==1:
+                animation = self.clip(self.left_states[0])
+            elif face_r==1:
+                animation = self.clip(self.right_states[0])
             self.xvel = 0
 
         # increment in x direction
         self.rect.left+= self.xvel
         # x-axis collisions
-        self.collide(self.xvel, 0 , platforms)
+        self.collide(self.xvel, 0 , platforms,v)
         # increment in y direction
         self.rect.top +=self.yvel
         # assuming we're in the air
         self.onGround = False;
         # y-axis collisions
-        self.collide(0, self.yvel, platforms)
+        self.collide(0, self.yvel, platforms,v)
         self.image = self.sheet.subsurface(self.sheet.get_clip())
-    def collide(self, xvel, yvel, platforms):
+    def collide(self, xvel, yvel, platforms,v):
         for p in platforms:
             if sprite.collide_rect(self, p):
                 if isinstance(p, ExitBlock):
@@ -226,7 +268,9 @@ class Arthur(Entity):
                 elif isinstance(p, Door):
                     event.post(event.Event(QUIT))
                 elif isinstance(p, LavaBlock):
-                    display.set_caption("Vidas: "+str(v-1))
+                    v=v-1
+                    display.set_caption("Vidas: "+str(v))
+                    print(v)
                     self.rect.x=50
                     self.rect.y=300
                 elif isinstance(p, LevelBlock):
@@ -243,6 +287,33 @@ class Arthur(Entity):
                     self.rect.top = p.rect.bottom
                     self.yvel = 0
                    # Player.rect.top =  Player.rect.top
+class Camera(object):
+    def __init__(self, camera_func, width, height):
+        self.camera_func = camera_func
+        self.state = Rect(0, 0, width, height)
+
+    def apply(self, target):
+        return target.rect.move(self.state.topleft)
+
+    def update(self, target):
+        self.state = self.camera_func(self.state, target.rect)
+
+def simple_camera(camera, target_rect):
+    l, t, _, _ = target_rect
+    _, _, w, h = camera
+    return Rect(-l+HALF_WIDTH, -t+HALF_HEIGHT, w, h)
+
+def complex_camera(camera, target_rect):
+    l, t, _, _ = target_rect
+    _, _, w, h = camera
+    l, t, _, _ = -l+HALF_WIDTH, -t+HALF_HEIGHT, w, h
+
+    l = min(0, l)                           # stop scrolling at the left edge
+    l = max(-(camera.width-WIN_WIDTH), l)   # stop scrolling at the right edge
+    t = max(-(camera.height-WIN_HEIGHT), t) # stop scrolling at the bottom
+    t = min(0, t)                           # stop scrolling at the top
+    return Rect(l, t, w, h)
+
 
 
 class Platform(Entity):
@@ -268,6 +339,15 @@ class Ground(Entity):
     def __init__(self, x, y):
         Entity.__init__(self)
         self.image = pygame.image.load("Imagenes/ground.png")
+        self.image.convert()
+        self.rect = Rect(x, y, 18,18)
+
+        def update(self):
+            pass
+class Dirt(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = pygame.image.load("Imagenes/dirt.png")
         self.image.convert()
         self.rect = Rect(x, y, 18,18)
 
@@ -313,7 +393,6 @@ class ExitBlock(Platform):
     def __init__(self, x, y):
         Platform.__init__(self, x, y)
         self.image.fill(Color("#0033FF"))
-
 
 
 
