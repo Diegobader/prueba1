@@ -11,9 +11,9 @@ FLAGS = 0
 Resolution = 32
 face_l=0
 face_r=1
+v=1
+arthur_sprites='Imagenes/arthur2.png'
 def game():
-    v=3
-    global v
     pygame.init()
     screen = display.set_mode(DISPLAY, FLAGS, Resolution)
     display.set_caption("Vidas: 3 ")
@@ -141,7 +141,7 @@ def game():
         camera.update(arthur)
 
         #update player, draw everything else
-        arthur.update(up, down, left, right, platforms, face_l, face_r)
+        arthur.update(up, down, left, right, platforms)
         for e in entities:
             screen.blit(e.image, camera.apply(e))
         pygame.display.flip()
@@ -156,22 +156,21 @@ class Arthur(Entity):
         self.xvel = 0
         self.yvel = 0
         self.onGround = False
-        self.sheet = pygame.image.load('Imagenes/arthur2.png')
+        self.sheet = pygame.image.load(arthur_sprites)
         self.sheet.set_clip(pygame.Rect((252,4), (32,41 )))
         self.image = self.sheet.subsurface(self.sheet.get_clip())
         self.rect = self.image.get_rect()
         self.rect.topleft = ( x, y)
         self.frame = 0
         res = self.reset(50, 300)
-        
+        self.ghost_face ={0: (0,0, 30, 40)}
         self.left_states = { 0: (252, 3, 28, 41),
                              1: (225, 5, 27, 41),
                              2: (192, 5, 32, 41),
-                             3: (164, 4, 32, 41),
                              3: (141, 5, 24, 41),
                              4: (107, 5, 31, 41),
                              5: (79, 5, 27, 41) }
-        self.right_states = { 0: (284, 5, 29, 43),
+        self.right_states = { 0: (286, 5, 24, 38),
                               1: (313, 5, 27, 43),
                               2: (338, 5, 32, 41),
                               3: (399, 5, 24, 41),
@@ -183,9 +182,11 @@ class Arthur(Entity):
         self.down_states = { 0: (252, 81, 29, 43),
                              1: (225, 81, 29, 43),
                              2: (312, 81, 29, 43) }
-        self.jump_states = { 0:(282, 48, 29, 37)}
+        self.jump_sright_states = { 0:(282, 48, 29, 37)}
+        self.jump_sleft_states = {0: (249, 52, 27,29)}
         self.jump_left_states = { 0: (206, 47, 36, 34)}
         self.jump_right_states = { 0: (318 ,48, 36, 34)}
+
     def get_frame(self, frame_set):
         self.frame += 1
         if self.frame > (len(frame_set) - 1):
@@ -203,7 +204,9 @@ class Arthur(Entity):
 
         self.rect.center = (self.x, self.y)
 
-    def update(self, up, down, left, right, platforms, face_l, face_r):
+    def update(self, up, down, left, right, platforms):
+        global face_l
+        global face_r
         if up:
             #only jump if on the ground
             if self.onGround:
@@ -240,9 +243,12 @@ class Arthur(Entity):
                 face_l=1
                 face_r=0
                 self.xvel = -5
-            else:
-                animation = self.clip(self.jump_states)
-        if not (left or right):
+        if self.yvel!=0 and not self.onGround and self.xvel==0:
+                if face_l==1:
+                    animation = self.clip(self.jump_sleft_states[0])
+                elif face_r==1:
+                    animation = self.clip(self.jump_sright_states[0])
+        elif not (left or right):
             if face_l==1:
                 animation = self.clip(self.left_states[0])
             elif face_r==1:
@@ -252,17 +258,35 @@ class Arthur(Entity):
         # increment in x direction
         self.rect.left+= self.xvel
         # x-axis collisions
-        self.collide(self.xvel, 0 , platforms,v)
+        self.collide(self.xvel, 0 , platforms)
         # increment in y direction
         self.rect.top +=self.yvel
         # assuming we're in the air
         self.onGround = False;
         # y-axis collisions
-        self.collide(0, self.yvel, platforms,v)
+        self.collide(0, self.yvel, platforms)
         self.image = self.sheet.subsurface(self.sheet.get_clip())
-    def collide(self, xvel, yvel, platforms,v):
+    def collide(self, xvel, yvel, platforms):
+        global animation
+        global v
+        global arthur_sprites
         for p in platforms:
             if sprite.collide_rect(self, p):
+                if isinstance(p, Ground):
+                    if face_l==1:
+                        animation = self.clip(self.left_states[0])
+                    elif face_r==1:
+                        animation = self.clip(self.right_states[0])
+                if isinstance(p, Dirt):
+                    if face_l==1:
+                        animation = self.clip(self.left_states[0])
+                    elif face_r==1:
+                        animation = self.clip(self.right_states[0])
+                if isinstance(p, Platform):
+                    if face_l==1:
+                        animation = self.clip(self.left_states[0])
+                    elif face_r==1:
+                        animation = self.clip(self.right_states[0])
                 if isinstance(p, ExitBlock):
                     event.post(event.Event(QUIT))
                 elif isinstance(p, Door):
@@ -270,7 +294,8 @@ class Arthur(Entity):
                 elif isinstance(p, LavaBlock):
                     v=v-1
                     display.set_caption("Vidas: "+str(v))
-                    print(v)
+                    if v==0:
+                        arthur_sprites='Imagenes/ghost_face.png'                        
                     self.rect.x=50
                     self.rect.y=300
                 elif isinstance(p, LevelBlock):
